@@ -1,7 +1,12 @@
 package tcp;
 
+import file.LocalStorage;
+
 import java.io.*;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Scanner;
 
@@ -9,10 +14,37 @@ import static tcp.MainServer.*;
 
 public class Client {
     static final String PREFIX = "Client";
+    private static String serverName = null;
+    private static Path localRoot = null;
     public static void main (String[] args) throws Exception {
         try {
             System.out.println("args: " + Arrays.toString(args));
-            String serverName = args.length > 0? args[0]: "localhost";
+            for (int i = 0; i < args.length; i++) {
+                if (args[i].equalsIgnoreCase("-l")) {
+                    try {
+                        localRoot = Paths.get(args[++i]).toAbsolutePath();
+                        if (!Files.exists(localRoot))
+                            localRoot = Files.createDirectories(localRoot);
+                    } catch (IllegalArgumentException | IOException | IOError e) {
+                        System.err.println("Error: \"" + args[i] + "\" is not a valid path!");
+                        return;
+                    }
+                } else if (args[i].equalsIgnoreCase("-s")) {
+                    serverName = args[++i];
+                }
+            }
+
+            if (null == serverName) {
+                System.err.println("Error: No server specified!");
+                return;
+            }
+            if (null == localRoot) {
+                System.err.println("Error: No path specified for local storage!");
+                return;
+            }
+
+            LocalStorage localStorage = new LocalStorage(localRoot);
+
             Socket socket = new Socket(serverName, PORT);
 
             // init IO

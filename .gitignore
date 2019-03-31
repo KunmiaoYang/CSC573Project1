@@ -33,6 +33,7 @@ buildNumber.properties
 *.rar
 
 ### Intellij ###
+out/
 .idea/
 *.md_*
 
