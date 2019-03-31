@@ -4,6 +4,7 @@ import db.Database;
 
 import java.io.*;
 import java.net.Socket;
+import java.sql.SQLException;
 
 import static tcp.MainServer.CODE_END;
 import static tcp.MainServer.CODE_EXIT;
@@ -16,14 +17,17 @@ public class ThreadServer extends Thread {
     private String ip;
     private int port;
 
-    ThreadServer(Socket socket, Database db) {
+    ThreadServer(Socket socket, Database db) throws SQLException {
         this.socket = socket;
         this.db = db;
+        registerClient();
     }
 
-    void registerClient(Socket socket) {
+    private void registerClient() throws SQLException {
         this.ip = socket.getInetAddress().getHostAddress();
         this.port = socket.getPort();
+        db.getStatement().executeUpdate("INSERT INTO client (ip, port, active) values " +
+                "('" + ip + "', " + port + ", true);");
     }
 
     @Override
@@ -45,7 +49,7 @@ public class ThreadServer extends Thread {
             pw.flush();
             printMessage(Client.PREFIX, br);
 
-            String command = null;
+            String command;
             while (!(command = br.readLine()).equals(CODE_EXIT)) {
                 pw.println(command + " received.");
                 pw.println(CODE_END);
@@ -61,6 +65,12 @@ public class ThreadServer extends Thread {
                 if (null != is) is.close();
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

@@ -45,11 +45,17 @@ public class MainServer {
             System.out.println("Main server started!");
 
             while (true) {
-                Socket socket = serverSocket.accept();
-                ThreadServer threadServer = new ThreadServer(socket, db);
-                threadServer.start();
-                InetAddress address = socket.getInetAddress();
-                System.out.println("New connection: "+ address.getHostAddress() + ":" + socket.getPort());
+                Socket socket = null;
+                try {
+                    socket = serverSocket.accept();
+                    ThreadServer threadServer = new ThreadServer(socket, db);
+                    threadServer.start();
+                    InetAddress address = socket.getInetAddress();
+                    System.out.println("New connection: "+ address.getHostAddress() + ":" + socket.getPort());
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                    if (null != socket) socket.close();
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
