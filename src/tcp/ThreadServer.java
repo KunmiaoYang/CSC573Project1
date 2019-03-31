@@ -3,7 +3,12 @@ package tcp;
 import java.io.*;
 import java.net.Socket;
 
+import static tcp.MainServer.CODE_END;
+import static tcp.MainServer.CODE_EXIT;
+import static tcp.MainServer.printMessage;
+
 public class ThreadServer extends Thread {
+    static final String PREFIX = "Thread server";
     Socket socket = null;
 
     public ThreadServer(Socket socket) {
@@ -25,14 +30,16 @@ public class ThreadServer extends Thread {
             pw = new PrintWriter(os);
 
             pw.println("Welcome!");
+            pw.println(CODE_END);
             pw.flush();
+            printMessage(Client.PREFIX, br);
 
-            String info = null;
-            while (!(info = br.readLine()).equals(MainServer.CODE_EXIT)) {
-                System.out.println("<Client>: " + info);
+            String command = null;
+            while (!(command = br.readLine()).equals(CODE_EXIT)) {
+                pw.println(command + " received.");
+                pw.println(CODE_END);
+                pw.flush();
             }
-            pw.println(MainServer.CODE_EXIT);
-            pw.flush();
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
