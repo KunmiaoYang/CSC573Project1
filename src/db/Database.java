@@ -30,11 +30,11 @@ public class Database {
         this.user = account.getString("db.user");
         this.password = account.getString("db.password");
         this.driver = config.getString("db.driver");
-        this.jdbcURL = config.getString("db.url") + user;
+        this.jdbcURL = config.getString("db.url");
         try {
             connectToDatabase();
         } catch (ClassNotFoundException | SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error: database connection failed!");
         }
     }
 

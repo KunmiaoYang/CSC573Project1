@@ -7,28 +7,46 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class MainServer {
     static final int PORT = 7734;
     static final String CODE_END = "end";
     static final String CODE_EXIT = "exit";
-    static final Database db =  new Database();
+    private static final Database db =  new Database();
 
-    public static void printMessage(String prefix, BufferedReader br) throws IOException {
+    static void printMessage(String prefix, BufferedReader br) throws IOException {
         String info;
         while (!(info = br.readLine()).equals(CODE_END)) {
             System.out.println("<" + prefix + ">: " + info);
         }
     }
+
+    private static boolean initDB() {
+        if (null == db.getConnection()) return false;
+        try {
+            Statement statement = db.getStatement();
+            statement.executeUpdate("DELETE FROM rfc;");
+            statement.executeUpdate("DELETE FROM client;");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return true;
+    }
+
     public static void main (String[] args) throws IOException {
         try {
+            // init database
+            if (!initDB()) return;
+
+            // init socket
             ServerSocket serverSocket = new ServerSocket(PORT);
             System.out.println("Main server started!");
-            Socket socket = null;
 
             while (true) {
-                socket = serverSocket.accept();
-                ThreadServer threadServer = new ThreadServer(socket);
+                Socket socket = serverSocket.accept();
+                ThreadServer threadServer = new ThreadServer(socket, db);
                 threadServer.start();
                 InetAddress address = socket.getInetAddress();
                 System.out.println("New connection: "+ address.getHostAddress() + ":" + socket.getPort());

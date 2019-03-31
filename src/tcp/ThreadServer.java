@@ -1,5 +1,7 @@
 package tcp;
 
+import db.Database;
+
 import java.io.*;
 import java.net.Socket;
 
@@ -9,10 +11,19 @@ import static tcp.MainServer.printMessage;
 
 public class ThreadServer extends Thread {
     static final String PREFIX = "Thread server";
-    Socket socket = null;
+    private Socket socket = null;
+    private Database db = null;
+    private String ip;
+    private int port;
 
-    public ThreadServer(Socket socket) {
+    ThreadServer(Socket socket, Database db) {
         this.socket = socket;
+        this.db = db;
+    }
+
+    void registerClient(Socket socket) {
+        this.ip = socket.getInetAddress().getHostAddress();
+        this.port = socket.getPort();
     }
 
     @Override
