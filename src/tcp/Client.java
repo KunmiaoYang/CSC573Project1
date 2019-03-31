@@ -43,8 +43,10 @@ public class Client {
                 return;
             }
 
+            // init local storage
             LocalStorage localStorage = new LocalStorage(localRoot);
 
+            // connect
             Socket socket = new Socket(serverName, PORT);
 
             // init IO

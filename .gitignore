@@ -40,3 +40,6 @@ out/
 ### Output ###
 output/
 output/*.py
+
+### DB ####
+resources/db/account.properties

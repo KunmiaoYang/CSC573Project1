@@ -1,5 +1,7 @@
 package tcp;
 
+import db.Database;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -10,6 +12,8 @@ public class MainServer {
     static final int PORT = 7734;
     static final String CODE_END = "end";
     static final String CODE_EXIT = "exit";
+    static final Database db =  new Database();
+
     public static void printMessage(String prefix, BufferedReader br) throws IOException {
         String info;
         while (!(info = br.readLine()).equals(CODE_END)) {
