@@ -1,6 +1,7 @@
 package tcp;
 
 import file.LocalStorage;
+import file.RFC;
 
 import java.io.*;
 import java.net.Socket;
@@ -14,8 +15,36 @@ import static tcp.MainServer.*;
 
 public class Client {
     static final String PREFIX = "Client";
+    private static final String VERSION = "P2P-CI/1.0";
     private static String serverName = null;
+    private static String host;
+    private static int port;
+    private static String os;
     private static Path localRoot = null;
+
+    private static void initHost (BufferedReader br) throws IOException {
+        String[] info = br.readLine().split(":");
+        host = info[0];
+        port = Integer.parseInt(info[1]);
+    }
+
+    private static void updateRFC (PrintWriter pw, BufferedReader br, LocalStorage localStorage)
+            throws IOException {
+        for (RFC rfc: localStorage.getAllRFC()) {
+            addRFC(pw, br, rfc);
+        }
+    }
+
+    private static void addRFC (PrintWriter pw, BufferedReader br, RFC rfc) throws IOException {
+        pw.format("%s RFC %d %s\r\n", CODE_ADD, rfc.id, VERSION);
+        pw.format("%s: %s\r\n", "Host", host);
+        pw.format("%s: %s\r\n", "Port", port);
+        pw.format("%s: %s\r\n", "Title", rfc.title);
+        pw.println(CODE_END);
+        pw.flush();
+        printMessage(ThreadServer.PREFIX, br);
+    }
+
     public static void main (String[] args) throws Exception {
         try {
             System.out.println("args: " + Arrays.toString(args));
@@ -43,6 +72,8 @@ public class Client {
                 return;
             }
 
+            os = System.getProperty("os.name");
+
             // init local storage
             LocalStorage localStorage = new LocalStorage(localRoot);
 
@@ -60,7 +91,9 @@ public class Client {
             pw.println("This is client!");
             pw.println(CODE_END);
             pw.flush();
+            initHost(br);
             printMessage(ThreadServer.PREFIX, br);
+            updateRFC(pw, br, localStorage);
 
             // user console
             String command = null;

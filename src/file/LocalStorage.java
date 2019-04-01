@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.HashMap;
 
 public class LocalStorage {
@@ -21,5 +22,9 @@ public class LocalStorage {
         } catch (IOException e) {
             System.err.println(e);
         }
+    }
+
+    public Collection<RFC> getAllRFC() {
+        return rfcMap.values();
     }
 }

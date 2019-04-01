@@ -4,8 +4,8 @@ import java.nio.file.Path;
 
 public class RFC {
     Path path;
-    int id;
-    String title;
+    public int id;
+    public String title;
 
     public RFC(Path path) {
         this.path = path.toAbsolutePath();

@@ -12,8 +12,19 @@ import java.sql.Statement;
 
 public class MainServer {
     static final int PORT = 7734;
+    static final String CODE_ADD = "ADD";
+    static final String CODE_LOOKUP = "LOOKUP";
+    static final String CODE_LIST = "LIST";
     static final String CODE_END = "end";
     static final String CODE_EXIT = "exit";
+    static final String HEADER_HOST = "Host:";
+    static final String HEADER_PORT = "Port:";
+    static final String HEADER_TITLE = "Title:";
+    static final String HEADER_DATE = "Date:";
+    static final String HEADER_OS = "OS:";
+    static final String HEADER_LAST_MODIFIED = "Last-Modified:";
+    static final String HEADER_CONTENT_LENGTH = "Content-Length:";
+    static final String HEADER_CONTENT_TYPE = "Content-Type:";
     private static final Database db =  new Database();
 
     static void printMessage(String prefix, BufferedReader br) throws IOException {
@@ -35,7 +46,7 @@ public class MainServer {
         return true;
     }
 
-    public static void main (String[] args) throws IOException {
+    public static void main (String[] args) {
         try {
             // init database
             if (!initDB()) return;
