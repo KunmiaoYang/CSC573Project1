@@ -17,6 +17,11 @@ public class ThreadServer extends Thread {
     private String ip;
     private int port;
     private String whereClause;
+    private String clientPrefix;
+
+    private static void consoleOutput (String prefix, String msg) {
+        System.out.format("<%s>: %s\r\n", prefix, msg);
+    }
 
     ThreadServer(Socket socket, Database db) throws SQLException {
         this.socket = socket;
@@ -27,6 +32,7 @@ public class ThreadServer extends Thread {
     private void registerClient() throws SQLException {
         this.ip = socket.getInetAddress().getHostAddress();
         this.port = socket.getPort();
+        this.clientPrefix = String.format("%s %s:%d", Client.PREFIX, this.ip, this.port);
         this.whereClause = String.format("WHERE ip = '%s' AND port = %d", ip, port);
         Statement st = db.getStatement();
         ResultSet resultSet =
@@ -53,8 +59,9 @@ public class ThreadServer extends Thread {
     private void executeAddRFC (PrintWriter pw, BufferedReader br, String command) throws IOException, SQLException {
         String[] args = command.split("\\s+");
         int number = Integer.parseInt(args[2]);
-        int port = -1;
-        String title = null, ip = null;
+        int port = this.port;
+        String title = null, ip = this.ip;
+        consoleOutput(clientPrefix, String.format("Adding RFC %d ...", number));
         String info;
         while (!(info = br.readLine()).equals(CODE_END)) {
             if (info.startsWith(HEADER_HOST))
@@ -66,7 +73,8 @@ public class ThreadServer extends Thread {
         }
         if (port > -1 && null != title && null != ip) {
             addRFC(number, title, ip, port);
-            pw.format("Add RFC %d %s from %s:%d complete!\r\n", number, title, ip, port);
+            String msg = String.format("Add RFC %d %s from %s:%d complete!", number, title, ip, port);
+            pw.println(msg);
         }
         pw.println(MainServer.CODE_END);
         pw.flush();
@@ -103,7 +111,7 @@ public class ThreadServer extends Thread {
             pw.println("Welcome!");
             pw.println(CODE_END);
             pw.flush();
-            printMessage(Client.PREFIX, br);
+            printMessage(clientPrefix, br);
 
             String command;
             while (!(command = br.readLine()).equals(CODE_EXIT)) {
@@ -113,6 +121,7 @@ public class ThreadServer extends Thread {
                     e.printStackTrace();
                 }
             }
+            consoleOutput(clientPrefix, "Disconnected!");
         } catch (IOException e) {
             e.printStackTrace();
         } finally {

@@ -88,7 +88,7 @@ public class Client {
             Scanner scanner = new Scanner(System.in);
 
             // send basic info
-            pw.println("This is client!");
+            pw.println("Connection established!");
             pw.println(CODE_END);
             pw.flush();
             initHost(br);
