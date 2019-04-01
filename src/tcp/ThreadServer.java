@@ -12,6 +12,15 @@ import static tcp.MainServer.*;
 
 public class ThreadServer extends Thread {
     static final String PREFIX = "Thread server";
+    private static final String VERSION = "P2P-CI/1.0";
+    private static final int STATUS_OK = 200;
+    private static final int STATUS_BAD_REQUEST = 400;
+    private static final int STATUS_NOT_FOUND = 404;
+    private static final int STATUS_INVALID_VERSION = 505;
+    private static final String PHRASE_OK = "OK";
+    private static final String PHRASE_BAD_REQUEST = "Bad Request";
+    private static final String PHRASE_NOT_FOUND = "Not Found";
+    private static final String PHRASE_INVALID_VERSION = "P2P-CI Version Not Supported";
     private Socket socket;
     private Database db;
     private String ip;
@@ -87,17 +96,21 @@ public class ThreadServer extends Thread {
         if (null != whereCondition && !whereCondition.equals(""))
             sbSql.append(" ").append(whereCondition.trim());
         ResultSet resultSet = db.getStatement().executeQuery(sbSql.append(" ORDER BY number;").toString());
-        int count = 0;
+        StringBuilder sb = new StringBuilder();
         while (resultSet.next()) {
-            count++;
-            pw.format ("RFC %d %s on %s:%d\r\n",
+            sb.append(String.format ("RFC %d %s %s %d\r\n",
                     resultSet.getInt("number"),
                     resultSet.getString("title"),
                     resultSet.getString("ip"),
                     resultSet.getInt("port")
-            );
+            ));
         }
-        if (0 == count) pw.println("No RFC found!");
+        if (0 == sb.length()) {
+            pw.format("%s %d %s\r\n", VERSION, STATUS_NOT_FOUND, PHRASE_NOT_FOUND);
+        } else {
+            pw.format("%s %d %s\r\n", VERSION, STATUS_OK, PHRASE_OK);
+            pw.print(sb.toString());
+        }
         resultSet.close();
         pw.println(MainServer.CODE_END);
         pw.flush();
@@ -130,15 +143,60 @@ public class ThreadServer extends Thread {
         st.executeUpdate("DELETE FROM client " + whereClause + ";");
     }
 
-    private void execute (PrintWriter pw, BufferedReader br, String command) throws Exception {
-        String code = command.trim().split("\\s+")[0];
-        if (code.equals(MainServer.CODE_ADD)) {
-            executeAddRFC(pw, br, command.trim());
-        } else if (code.equals(MainServer.CODE_LOOKUP)) {
-            executeLookup(pw, br, command.trim());
-        } else if (code.equals(MainServer.CODE_LIST)) {
-            executeList(pw, br, command.trim());
+    private int[] getVersion(String version) throws VersionException {
+        String[] sNums = version.substring(version.lastIndexOf('/') + 1).split("\\.");
+        if (sNums.length < 2) throw new VersionException("Invalid version!");
+        int[] iNums = new int[sNums.length];
+        try {
+            for (int i = 0; i < iNums.length; i++)
+                iNums[i] = Integer.parseInt(sNums[i]);
+        } catch (NumberFormatException e) {
+            throw new VersionException("Invalid version!");
         }
+        return iNums;
+    }
+
+    private boolean checkVersion(String version) throws VersionException {
+        int[] serverVersion = getVersion(VERSION), clientVersion = getVersion(version);
+        for (int i = 0; i < serverVersion.length && i < clientVersion.length; i++) {
+            if (serverVersion[i] < clientVersion[i]) return false;
+            if (serverVersion[i] > clientVersion[i]) return true;
+        }
+        return serverVersion.length >= clientVersion.length;
+    }
+
+    private void execute (PrintWriter pw, BufferedReader br, String command) throws IOException {
+        String[] args = command.trim().split("\\s+");
+        String code = args[0];
+        String version = args[args.length - 1];
+        try {
+            if (!checkVersion(version)) {
+                while (!br.readLine().equals(MainServer.CODE_END));
+                pw.format("%s %d %s\r\n", VERSION, STATUS_INVALID_VERSION, PHRASE_INVALID_VERSION);
+                pw.println(command);
+                pw.println(MainServer.CODE_END);
+                pw.flush();
+                return;
+            } else if (code.equals(MainServer.CODE_ADD)) {
+                executeAddRFC(pw, br, command.trim());
+                return;
+            } else if (code.equals(MainServer.CODE_LOOKUP)) {
+                executeLookup(pw, br, command.trim());
+                return;
+            } else if (code.equals(MainServer.CODE_LIST)) {
+                executeList(pw, br, command.trim());
+                return;
+            }
+        } catch (SQLException | VersionException e) {
+            e.printStackTrace();
+        }
+        pw.format("%s %d %s\r\n", VERSION, STATUS_BAD_REQUEST, PHRASE_BAD_REQUEST);
+        pw.println(command);
+        String info;
+        while (!(info = br.readLine()).equals(MainServer.CODE_END))
+            pw.println(info);
+        pw.println(MainServer.CODE_END);
+        pw.flush();
     }
 
     @Override
@@ -183,6 +241,12 @@ public class ThreadServer extends Thread {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    public static class VersionException extends Exception {
+        public VersionException(String message) {
+            super(message);
         }
     }
 }

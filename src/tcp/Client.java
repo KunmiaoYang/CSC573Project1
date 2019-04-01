@@ -85,8 +85,12 @@ public class Client {
         } else if (code.equalsIgnoreCase(MainServer.CODE_LIST)) {
             listAll(pw, br);
             return;
+        } else {
+            pw.format("%s %s\r\n", command, VERSION);
+            pw.println(CODE_END);
+            pw.flush();
+            printMessage(ThreadServer.PREFIX, br);
         }
-        System.err.println("Invalid command!");
     }
 
     public static void main (String[] args) throws Exception {
