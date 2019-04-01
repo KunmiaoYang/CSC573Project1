@@ -4,7 +4,9 @@ import db.Database;
 
 import java.io.*;
 import java.net.Socket;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import static tcp.MainServer.CODE_END;
 import static tcp.MainServer.CODE_EXIT;
@@ -16,6 +18,7 @@ public class ThreadServer extends Thread {
     private Database db = null;
     private String ip;
     private int port;
+    private String whereClause;
 
     ThreadServer(Socket socket, Database db) throws SQLException {
         this.socket = socket;
@@ -26,8 +29,33 @@ public class ThreadServer extends Thread {
     private void registerClient() throws SQLException {
         this.ip = socket.getInetAddress().getHostAddress();
         this.port = socket.getPort();
-        db.getStatement().executeUpdate("INSERT INTO client (ip, port, active) values " +
-                "('" + ip + "', " + port + ", true);");
+        this.whereClause = "WHERE ip = '" + ip + "' AND port = " + port;
+        Statement st = db.getStatement();
+        ResultSet resultSet =
+                st.executeQuery("SELECT active FROM client " + whereClause + ";");
+        if (!resultSet.next())
+            st.executeUpdate("INSERT INTO client (ip, port, active) values " +
+                    "('" + ip + "', " + port + ", true);");
+        else
+            st.executeUpdate("UPDATE client SET active = true " + whereClause + ";");
+    }
+
+    private void addRFC (int number, String title, String ip, int port) throws SQLException {
+        Statement st = db.getStatement();
+        String whereClauseRFC = whereClause + " AND number = " + number;
+        ResultSet resultSet =
+                st.executeQuery("SELECT title FROM rfc " + whereClauseRFC + ";");
+        if (resultSet.next())
+            st.executeUpdate("UPDATE rfc SET title = " + title + " " + whereClauseRFC + ";");
+        else
+            st.executeUpdate("INSERT INTO rfc (number, title, ip, port) VALUES " +
+                    "(" + number + ", '" + title + "', '" + ip + "', " + port + ");");
+    }
+
+    private void removeClient() throws SQLException {
+        Statement st = db.getStatement();
+        st.executeUpdate("DELETE FROM rfc " + whereClause + ";");
+        st.executeUpdate("DELETE FROM client " + whereClause + ";");
     }
 
     @Override
@@ -59,18 +87,14 @@ public class ThreadServer extends Thread {
             e.printStackTrace();
         } finally {
             try {
+                if (null != socket) socket.close();
                 if (null != pw) pw.close();
                 if (null != os) os.close();
                 if (null != br) br.close();
                 if (null != is) is.close();
+                removeClient();
             } catch (Exception e) {
                 e.printStackTrace();
-            } finally {
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
             }
         }
     }

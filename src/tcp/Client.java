@@ -72,11 +72,11 @@ public class Client {
             pw.println(CODE_EXIT);
             pw.flush();
 
+            socket.close();
             br.close();
             is.close();
             pw.close();
             os.close();
-            socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }

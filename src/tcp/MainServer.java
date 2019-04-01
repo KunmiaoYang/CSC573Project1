@@ -54,7 +54,11 @@ public class MainServer {
                     System.out.println("New connection: "+ address.getHostAddress() + ":" + socket.getPort());
                 } catch (SQLException e) {
                     e.printStackTrace();
-                    if (null != socket) socket.close();
+                    try {
+                        if (null != socket) socket.close();
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
                 }
             }
         } catch (IOException e) {
