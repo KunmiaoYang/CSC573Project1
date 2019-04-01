@@ -69,10 +69,22 @@ public class Client {
         return true;
     }
 
+    private static void listAll (PrintWriter pw, BufferedReader br) throws IOException {
+        pw.format("%s ALL %s\r\n", CODE_LIST, VERSION);
+        pw.format("%s: %s\r\n", "Host", host);
+        pw.format("%s: %s\r\n", "Port", port);
+        pw.println(CODE_END);
+        pw.flush();
+        printMessage(ThreadServer.PREFIX, br);
+    }
+
     private static void execute (PrintWriter pw, BufferedReader br, String command) throws Exception {
         String code = command.trim().split("\\s+")[0];
         if (code.equalsIgnoreCase(MainServer.CODE_LOOKUP)) {
             if (lookup(pw, br, command.trim())) return;
+        } else if (code.equalsIgnoreCase(MainServer.CODE_LIST)) {
+            listAll(pw, br);
+            return;
         }
         System.err.println("Invalid command!");
     }
@@ -128,9 +140,11 @@ public class Client {
             updateRFC(pw, br, localStorage);
 
             // user console
+            System.out.println("Please input command:");
             String command = null;
             while (!(command = scanner.nextLine()).equals(CODE_EXIT)) {
                 execute(pw, br, command);
+                System.out.println("Please input command:");
             }
             pw.println(CODE_EXIT);
             pw.flush();

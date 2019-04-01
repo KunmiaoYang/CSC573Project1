@@ -82,20 +82,11 @@ public class ThreadServer extends Thread {
         pw.flush();
     }
 
-    private void executeLookup (PrintWriter pw, BufferedReader br, String command) throws IOException, SQLException {
-        String[] args = command.split("\\s+");
-        int number = Integer.parseInt(args[2]);
-        int port = this.port;
-        String title = null, ip = this.ip;
-        consoleOutput(clientPrefix, String.format("Looking up RFC %d ...", number));
-        String info;
-        while (!(info = br.readLine()).equals(CODE_END)) {
-            if (info.startsWith(HEADER_TITLE))
-                title = info.substring(HEADER_TITLE.length()).trim();
-        }
-        StringBuilder sbSql = new StringBuilder("SELECT * FROM RFC WHERE number = ").append(number);
-        if (null != title) sbSql.append(" AND title = '").append(title).append("'");
-        ResultSet resultSet = db.getStatement().executeQuery(sbSql.append(";").toString());
+    private void lookup (PrintWriter pw, BufferedReader br, String whereCondition) throws SQLException {
+        StringBuilder sbSql = new StringBuilder("SELECT * FROM RFC");
+        if (null != whereCondition && !whereCondition.equals(""))
+            sbSql.append(" ").append(whereCondition.trim());
+        ResultSet resultSet = db.getStatement().executeQuery(sbSql.append(" ORDER BY number;").toString());
         int count = 0;
         while (resultSet.next()) {
             count++;
@@ -112,6 +103,27 @@ public class ThreadServer extends Thread {
         pw.flush();
     }
 
+    private void executeLookup (PrintWriter pw, BufferedReader br, String command) throws IOException, SQLException {
+        String[] args = command.split("\\s+");
+        int number = Integer.parseInt(args[2]);
+        int port = this.port;
+        String title = null, ip = this.ip;
+        consoleOutput(clientPrefix, String.format("Looking up RFC %d ...", number));
+        String info;
+        while (!(info = br.readLine()).equals(CODE_END)) {
+            if (info.startsWith(HEADER_TITLE))
+                title = info.substring(HEADER_TITLE.length()).trim();
+        }
+        StringBuilder sbWhere = new StringBuilder("WHERE number = ").append(number);
+        if (null != title) sbWhere.append(" AND title = '").append(title).append("'");
+        lookup(pw, br, sbWhere.toString());
+    }
+
+    private void executeList (PrintWriter pw, BufferedReader br, String command) throws IOException, SQLException {
+        consoleOutput(clientPrefix, "List all RFCs");
+        lookup(pw, br, "");
+    }
+
     private void removeClient() throws SQLException {
         Statement st = db.getStatement();
         st.executeUpdate("DELETE FROM rfc " + whereClause + ";");
@@ -124,6 +136,8 @@ public class ThreadServer extends Thread {
             executeAddRFC(pw, br, command.trim());
         } else if (code.equals(MainServer.CODE_LOOKUP)) {
             executeLookup(pw, br, command.trim());
+        } else if (code.equals(MainServer.CODE_LIST)) {
+            executeList(pw, br, command.trim());
         }
     }
 
