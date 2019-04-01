@@ -32,6 +32,7 @@ public class MainServer {
         while (!(info = br.readLine()).equals(CODE_END)) {
             System.out.println("<" + prefix + ">: " + info);
         }
+        System.out.println("<" + prefix + ">: ");
     }
 
     private static boolean initDB() {

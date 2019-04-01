@@ -72,9 +72,9 @@ public class ThreadServer extends Thread {
         int number = Integer.parseInt(args[2]);
         int port = this.port;
         String title = null, ip = this.ip;
-        consoleOutput(clientPrefix, String.format("Adding RFC %d ...", number));
         String info;
         while (!(info = br.readLine()).equals(CODE_END)) {
+            consoleOutput(clientPrefix, info);
             if (info.startsWith(HEADER_HOST))
                 ip = info.substring(HEADER_HOST.length()).trim();
             else if (info.startsWith(HEADER_PORT))
@@ -82,8 +82,10 @@ public class ThreadServer extends Thread {
             else if (info.startsWith(HEADER_TITLE))
                 title = info.substring(HEADER_TITLE.length()).trim();
         }
+        consoleOutput(clientPrefix, "");
         if (port > -1 && null != title && null != ip) {
             addRFC(number, title, ip, port);
+            pw.format("%s %d %s\r\n", VERSION, STATUS_OK, PHRASE_OK);
             String msg = String.format("Add RFC %d %s from %s:%d complete!", number, title, ip, port);
             pw.println(msg);
         }
@@ -121,19 +123,22 @@ public class ThreadServer extends Thread {
         int number = Integer.parseInt(args[2]);
         int port = this.port;
         String title = null, ip = this.ip;
-        consoleOutput(clientPrefix, String.format("Looking up RFC %d ...", number));
+//        consoleOutput(clientPrefix, String.format("Looking up RFC %d ...", number));
         String info;
         while (!(info = br.readLine()).equals(CODE_END)) {
+            consoleOutput(clientPrefix, info);
             if (info.startsWith(HEADER_TITLE))
                 title = info.substring(HEADER_TITLE.length()).trim();
         }
+        consoleOutput(clientPrefix, "");
         StringBuilder sbWhere = new StringBuilder("WHERE number = ").append(number);
         if (null != title) sbWhere.append(" AND title = '").append(title).append("'");
         lookup(pw, br, sbWhere.toString());
     }
 
     private void executeList (PrintWriter pw, BufferedReader br, String command) throws IOException, SQLException {
-        consoleOutput(clientPrefix, "List all RFCs");
+//        consoleOutput(clientPrefix, "List all RFCs");
+        printMessage(clientPrefix, br);
         lookup(pw, br, "");
     }
 
@@ -166,12 +171,13 @@ public class ThreadServer extends Thread {
     }
 
     private void execute (PrintWriter pw, BufferedReader br, String command) throws IOException {
+        consoleOutput(clientPrefix, command);
         String[] args = command.trim().split("\\s+");
         String code = args[0];
         String version = args[args.length - 1];
         try {
             if (!checkVersion(version)) {
-                while (!br.readLine().equals(MainServer.CODE_END));
+                printMessage(clientPrefix, br);
                 pw.format("%s %d %s\r\n", VERSION, STATUS_INVALID_VERSION, PHRASE_INVALID_VERSION);
                 pw.println(command);
                 pw.println(MainServer.CODE_END);
@@ -192,9 +198,7 @@ public class ThreadServer extends Thread {
         }
         pw.format("%s %d %s\r\n", VERSION, STATUS_BAD_REQUEST, PHRASE_BAD_REQUEST);
         pw.println(command);
-        String info;
-        while (!(info = br.readLine()).equals(MainServer.CODE_END))
-            pw.println(info);
+        printMessage(clientPrefix, br);
         pw.println(MainServer.CODE_END);
         pw.flush();
     }
