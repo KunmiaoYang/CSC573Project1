@@ -42,6 +42,7 @@ public class ThreadServer extends Thread {
                     "('" + ip + "', " + port + ", true);");
         else
             st.executeUpdate(String.format("UPDATE client SET active = true %s;", whereClause));
+        resultSet.close();
     }
 
     private void addRFC (int number, String title, String ip, int port) throws SQLException {
@@ -54,6 +55,7 @@ public class ThreadServer extends Thread {
         else
             st.executeUpdate("INSERT INTO rfc (number, title, ip, port) VALUES " +
                     "(" + number + ", '" + title + "', '" + ip + "', " + port + ");");
+        resultSet.close();
     }
 
     private void executeAddRFC (PrintWriter pw, BufferedReader br, String command) throws IOException, SQLException {
@@ -80,6 +82,36 @@ public class ThreadServer extends Thread {
         pw.flush();
     }
 
+    private void executeLookup (PrintWriter pw, BufferedReader br, String command) throws IOException, SQLException {
+        String[] args = command.split("\\s+");
+        int number = Integer.parseInt(args[2]);
+        int port = this.port;
+        String title = null, ip = this.ip;
+        consoleOutput(clientPrefix, String.format("Looking up RFC %d ...", number));
+        String info;
+        while (!(info = br.readLine()).equals(CODE_END)) {
+            if (info.startsWith(HEADER_TITLE))
+                title = info.substring(HEADER_TITLE.length()).trim();
+        }
+        StringBuilder sbSql = new StringBuilder("SELECT * FROM RFC WHERE number = ").append(number);
+        if (null != title) sbSql.append(" AND title = '").append(title).append("'");
+        ResultSet resultSet = db.getStatement().executeQuery(sbSql.append(";").toString());
+        int count = 0;
+        while (resultSet.next()) {
+            count++;
+            pw.format ("RFC %d %s on %s:%d\r\n",
+                    resultSet.getInt("number"),
+                    resultSet.getString("title"),
+                    resultSet.getString("ip"),
+                    resultSet.getInt("port")
+            );
+        }
+        if (0 == count) pw.println("No RFC found!");
+        resultSet.close();
+        pw.println(MainServer.CODE_END);
+        pw.flush();
+    }
+
     private void removeClient() throws SQLException {
         Statement st = db.getStatement();
         st.executeUpdate("DELETE FROM rfc " + whereClause + ";");
@@ -90,6 +122,8 @@ public class ThreadServer extends Thread {
         String code = command.trim().split("\\s+")[0];
         if (code.equals(MainServer.CODE_ADD)) {
             executeAddRFC(pw, br, command.trim());
+        } else if (code.equals(MainServer.CODE_LOOKUP)) {
+            executeLookup(pw, br, command.trim());
         }
     }
 

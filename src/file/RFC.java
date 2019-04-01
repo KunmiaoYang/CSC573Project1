@@ -13,4 +13,9 @@ public class RFC {
         id = Integer.parseInt(fileName.substring(0, 4));
         title = fileName.substring(4, fileName.lastIndexOf('.')).trim();
     }
+
+    public RFC(int id, String title) {
+        this.id = id;
+        this.title = title;
+    }
 }

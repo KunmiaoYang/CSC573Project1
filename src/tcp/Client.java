@@ -45,6 +45,38 @@ public class Client {
         printMessage(ThreadServer.PREFIX, br);
     }
 
+    private static boolean lookup (PrintWriter pw, BufferedReader br, String command) throws IOException {
+        String[] args = command.split("\\s+");
+        if (args.length < 2) return false;
+        int number = 0;
+        try {
+            number = Integer.parseInt(args[1]);
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        pw.format("%s RFC %d %s\r\n", CODE_LOOKUP, number, VERSION);
+        pw.format("%s: %s\r\n", "Host", host);
+        pw.format("%s: %s\r\n", "Port", port);
+        if (args.length > 2) {
+            String title = command.substring(CODE_LOOKUP.length()).trim()
+                    .substring(args[1].length()).trim();
+            pw.format("%s: %s\r\n",
+                    "Title", title);
+        }
+        pw.println(CODE_END);
+        pw.flush();
+        printMessage(ThreadServer.PREFIX, br);
+        return true;
+    }
+
+    private static void execute (PrintWriter pw, BufferedReader br, String command) throws Exception {
+        String code = command.trim().split("\\s+")[0];
+        if (code.equalsIgnoreCase(MainServer.CODE_LOOKUP)) {
+            if (lookup(pw, br, command.trim())) return;
+        }
+        System.err.println("Invalid command!");
+    }
+
     public static void main (String[] args) throws Exception {
         try {
             System.out.println("args: " + Arrays.toString(args));
@@ -98,9 +130,7 @@ public class Client {
             // user console
             String command = null;
             while (!(command = scanner.nextLine()).equals(CODE_EXIT)) {
-                pw.println(command);
-                pw.flush();
-                printMessage(ThreadServer.PREFIX, br);
+                execute(pw, br, command);
             }
             pw.println(CODE_EXIT);
             pw.flush();
