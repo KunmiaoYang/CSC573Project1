@@ -80,7 +80,7 @@ public class Client {
         printMessage(ThreadServer.PREFIX, br);
     }
 
-    private static boolean getRFC (String command) {
+    private static boolean getRFC (PrintWriter pw, BufferedReader br, String command) {
         String[] args = command.split("\\s+");
         if (args.length < 4) {
             System.err.println("Not enough parameter: " + command);
@@ -98,17 +98,17 @@ public class Client {
                 peerPrefix = String.format("Client service %s:%d", host, port);
         try(Socket peerSocket = new Socket(host, port);
             OutputStream os = peerSocket.getOutputStream();
-            PrintWriter pw = new PrintWriter(os);
+            PrintWriter peerPw = new PrintWriter(os);
             InputStream is = peerSocket.getInputStream();
-            BufferedReader br = new BufferedReader(new InputStreamReader(is))
+            BufferedReader peerBr = new BufferedReader(new InputStreamReader(is))
         ) {
-            pw.format("%s RFC %d %s\r\n", CODE_GET, number, VERSION);
-            pw.format("%s %s\r\n", HEADER_HOST, host);
-            pw.format("%s %s\r\n", HEADER_PORT, port);
-            pw.format("%s %s\r\n", HEADER_OS, OS);
-            pw.println(CODE_END);
-            pw.flush();
-            List<String> response = Requests.readRequest(br);
+            peerPw.format("%s RFC %d %s\r\n", CODE_GET, number, VERSION);
+            peerPw.format("%s %s\r\n", HEADER_HOST, host);
+            peerPw.format("%s %s\r\n", HEADER_PORT, port);
+            peerPw.format("%s %s\r\n", HEADER_OS, OS);
+            peerPw.println(CODE_END);
+            peerPw.flush();
+            List<String> response = Requests.readRequest(peerBr);
             Requests.consoleOutputRequest(peerPrefix, response);
             Map<String, String> responseMap = Requests.getRequestMap(response);
 
@@ -128,6 +128,7 @@ public class Client {
                 e.printStackTrace();
             }
 
+            addRFC(pw, br, new RFC(file));
         } catch (UnknownHostException | ConnectException e) {
             System.err.println("Invalid peer address!");
             return false;
@@ -146,7 +147,7 @@ public class Client {
             listAll(pw, br);
             return;
         } else if (code.equalsIgnoreCase(MainServer.CODE_GET)) {
-            if (getRFC(command)) return;
+            if (getRFC(pw, br, command)) return;
         } else {
             pw.format("%s %s\r\n", command, VERSION);
             pw.println(CODE_END);
