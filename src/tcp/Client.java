@@ -4,24 +4,30 @@ import file.LocalStorage;
 import file.RFC;
 
 import java.io.*;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 import static tcp.MainServer.*;
+import static tcp.Requests.KEY_COMMAND;
 
 public class Client {
     static final String PREFIX = "Client";
-    private static final String VERSION = "P2P-CI/1.0";
+    static final String VERSION = "P2P-CI/1.0";
+    static final int BUF_SIZE = 1024;
     private static String serverName = null;
     private static String host;
     private static int clientServicePort;
     private static int port;
-    private static String os;
+    private static String OS;
     private static Path localRoot = null;
+    private static LocalStorage localStorage;
 
     private static void updateRFC (PrintWriter pw, BufferedReader br, LocalStorage localStorage)
             throws IOException {
@@ -72,6 +78,55 @@ public class Client {
         printMessage(ThreadServer.PREFIX, br);
     }
 
+    private static boolean getRFC (String command) {
+        String[] args = command.split("\\s+");
+        if (args.length < 4) return false;
+        int number = Integer.parseInt(args[1]),
+                port = Integer.parseInt(args[3]);
+        String host = args[2],
+                peerPrefix = String.format("Client service %s:%d", host, port);
+        try(Socket peerSocket = new Socket(host, port);
+            OutputStream os = peerSocket.getOutputStream();
+            PrintWriter pw = new PrintWriter(os);
+            InputStream is = peerSocket.getInputStream();
+            BufferedReader br = new BufferedReader(new InputStreamReader(is))
+        ) {
+            pw.format("%s RFC %d %s\r\n", CODE_GET, number, VERSION);
+            pw.format("%s %s\r\n", HEADER_HOST, host);
+            pw.format("%s %s\r\n", HEADER_PORT, port);
+            pw.format("%s %s\r\n", HEADER_OS, OS);
+            pw.println(CODE_END);
+            pw.flush();
+            List<String> response = Requests.readRequest(br);
+            Requests.consoleOutputRequest(peerPrefix, response);
+            Map<String, String> responseMap = Requests.getRequestMap(response);
+
+            if (STATUS_OK != Integer.parseInt(responseMap.get(KEY_COMMAND).split("\\s+")[1]))
+                return false;
+
+            String title = responseMap.get(HEADER_TITLE),
+                    filename = String.format("%04d %s.txt", number, title);
+            Path file = localStorage.createFile(filename);
+            try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file.toFile()))) {
+                byte[] buf = new byte[BUF_SIZE];
+                for (int num = is.read(buf); num != -1; num = is.read(buf)) {
+                    bos.write(buf, 0, num);
+                    bos.flush();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        } catch (ConnectException e) {
+            System.err.println("Invalid peer address!");
+            return false;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
     private static void execute (PrintWriter pw, BufferedReader br, String command) throws Exception {
         String code = command.trim().split("\\s+")[0];
         if (code.equalsIgnoreCase(MainServer.CODE_LOOKUP)) {
@@ -79,6 +134,8 @@ public class Client {
         } else if (code.equalsIgnoreCase(MainServer.CODE_LIST)) {
             listAll(pw, br);
             return;
+        } else if (code.equalsIgnoreCase(MainServer.CODE_GET)) {
+            if (getRFC(command)) return;
         } else {
             pw.format("%s %s\r\n", command, VERSION);
             pw.println(CODE_END);
@@ -96,7 +153,7 @@ public class Client {
                     try {
                         localRoot = Paths.get(args[++i]).toAbsolutePath();
                         if (!Files.exists(localRoot))
-                            localRoot = Files.createDirectories(localRoot);
+                            localRoot = Files.createDirectory(localRoot);
                     } catch (IllegalArgumentException | IOException | IOError e) {
                         System.err.println("Error: \"" + args[i] + "\" is not a valid path!");
                         return;
@@ -115,10 +172,10 @@ public class Client {
                 return;
             }
 
-            os = System.getProperty("os.name");
+            OS = System.getProperty("os.name");
 
             // init local storage
-            LocalStorage localStorage = new LocalStorage(localRoot);
+            localStorage = new LocalStorage(localRoot);
 
             // connect
             Socket socket = new Socket(serverName, PORT);

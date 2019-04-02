@@ -3,7 +3,7 @@ package file;
 import java.nio.file.Path;
 
 public class RFC {
-    Path path;
+    public Path path;
     public int id;
     public String title;
 

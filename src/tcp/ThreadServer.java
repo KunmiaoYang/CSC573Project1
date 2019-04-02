@@ -16,14 +16,6 @@ import static tcp.Requests.KEY_COMMAND;
 public class ThreadServer extends Thread {
     static final String PREFIX = "Thread server";
     private static final String VERSION = "P2P-CI/1.0";
-    private static final int STATUS_OK = 200;
-    private static final int STATUS_BAD_REQUEST = 400;
-    private static final int STATUS_NOT_FOUND = 404;
-    private static final int STATUS_INVALID_VERSION = 505;
-    private static final String PHRASE_OK = "OK";
-    private static final String PHRASE_BAD_REQUEST = "Bad Request";
-    private static final String PHRASE_NOT_FOUND = "Not Found";
-    private static final String PHRASE_INVALID_VERSION = "P2P-CI Version Not Supported";
     private Socket socket;
     private Database db;
     private String ip;
@@ -37,7 +29,7 @@ public class ThreadServer extends Thread {
     }
 
     private void registerClient(Map<String, String> requestMap) throws SQLException {
-        this.clientServicePort = Integer.parseInt(requestMap.get(MainServer.HEADER_PORT));
+        this.clientServicePort = Integer.parseInt(requestMap.get(HEADER_PORT));
         this.ip = socket.getInetAddress().getHostAddress();
 //        this.clientServicePort = socket.getPort();
         this.clientPrefix = String.format("%s %s:%d", Client.PREFIX, this.ip, socket.getPort());

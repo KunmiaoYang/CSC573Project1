@@ -16,6 +16,7 @@ public class MainServer {
     static final String CODE_ADD = "ADD";
     static final String CODE_LOOKUP = "LOOKUP";
     static final String CODE_LIST = "LIST";
+    static final String CODE_GET = "GET";
     static final String CODE_END = "";
     static final String CODE_EXIT = "exit";
     static final String HEADER_HOST = "Host:";
@@ -26,7 +27,15 @@ public class MainServer {
     static final String HEADER_LAST_MODIFIED = "Last-Modified:";
     static final String HEADER_CONTENT_LENGTH = "Content-Length:";
     static final String HEADER_CONTENT_TYPE = "Content-Type:";
-    private static final Database db =  new Database();
+    static final int STATUS_OK = 200;
+    static final int STATUS_BAD_REQUEST = 400;
+    static final int STATUS_NOT_FOUND = 404;
+    static final int STATUS_INVALID_VERSION = 505;
+    static final String PHRASE_OK = "OK";
+    static final String PHRASE_BAD_REQUEST = "Bad Request";
+    static final String PHRASE_NOT_FOUND = "Not Found";
+    static final String PHRASE_INVALID_VERSION = "P2P-CI Version Not Supported";
+    static final Database db =  new Database();
 
     static void printMessage(String prefix, BufferedReader br) throws IOException {
         String info;
