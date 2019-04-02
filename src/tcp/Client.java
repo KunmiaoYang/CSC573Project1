@@ -6,6 +6,7 @@ import file.RFC;
 import java.io.*;
 import java.net.ConnectException;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -53,6 +54,7 @@ public class Client {
         try {
             number = Integer.parseInt(args[1]);
         } catch (NumberFormatException e) {
+            System.err.println("Invalid parameter: " + command);
             return false;
         }
         pw.format("%s RFC %d %s\r\n", CODE_LOOKUP, number, VERSION);
@@ -80,9 +82,18 @@ public class Client {
 
     private static boolean getRFC (String command) {
         String[] args = command.split("\\s+");
-        if (args.length < 4) return false;
-        int number = Integer.parseInt(args[1]),
-                port = Integer.parseInt(args[3]);
+        if (args.length < 4) {
+            System.err.println("Not enough parameter: " + command);
+            return false;
+        }
+        int number, port;
+        try {
+            number = Integer.parseInt(args[1]);
+            port = Integer.parseInt(args[3]);
+        } catch (NumberFormatException e) {
+            System.err.println("Invalid parameter: " + command);
+            return false;
+        }
         String host = args[2],
                 peerPrefix = String.format("Client service %s:%d", host, port);
         try(Socket peerSocket = new Socket(host, port);
@@ -117,7 +128,7 @@ public class Client {
                 e.printStackTrace();
             }
 
-        } catch (ConnectException e) {
+        } catch (UnknownHostException | ConnectException e) {
             System.err.println("Invalid peer address!");
             return false;
         } catch (IOException e) {

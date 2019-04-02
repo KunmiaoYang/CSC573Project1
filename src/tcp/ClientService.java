@@ -72,16 +72,25 @@ public class ClientService extends Thread {
                     throw new NoRFCFoundException("RFC "+ number);
                 }
 
-                // response header
-                pw.format("%s %d %s\r\n", Client.VERSION, STATUS_OK, PHRASE_OK);
-                pw.format("%s %s\r\n", HEADER_DATE, new Date().toString());
-                pw.format("%s %s\r\n", HEADER_OS, OS);
-                pw.format("%s %s\r\n", HEADER_TITLE, rfc.title);
-                pw.println(CODE_END);
-                pw.flush();
+                // get file
+                File file = rfc.path.toFile();
 
                 // transmit data
-                try (InputStream fis = new FileInputStream(rfc.path.toFile())) {
+                try (InputStream fis = new FileInputStream(file)) {
+                    // Response after open the file to deal with the case when the same
+                    // file overwrite itself. The client wouldn't open the file until this
+                    // header is arrived. So when opening the same file, it would be blocked until
+                    // this file has already been closed here.
+                    pw.format("%s %d %s\r\n", Client.VERSION, STATUS_OK, PHRASE_OK);
+                    pw.format("%s %s\r\n", HEADER_DATE, new Date().toString());
+                    pw.format("%s %s\r\n", HEADER_OS, OS);
+                    pw.format("%s %s\r\n", HEADER_TITLE, rfc.title);
+                    pw.format("%s %s\r\n", HEADER_LAST_MODIFIED, new Date(file.lastModified()).toString());
+                    pw.format("%s %s\r\n", HEADER_CONTENT_LENGTH, file.length());
+                    pw.format("%s %s\r\n", HEADER_CONTENT_TYPE, RFC.CONTENT_TYPE);
+                    pw.println(CODE_END);
+                    pw.flush();
+
                     byte[] buf = new byte[BUF_SIZE];
                     for (int num = fis.read(buf); num != -1; num = fis.read(buf)) {
                         os.write(buf, 0, num);
@@ -89,7 +98,7 @@ public class ClientService extends Thread {
                     }
                 }
             } catch (NoRFCFoundException e) {
-                System.out.format("<%s>: %s\r\n", PREFIX, e.getMessage());
+                System.out.format("<%s>: %s\r\n", PREFIX, e.toString());
             } catch (IOException e) {
                 System.out.format("<%s>: Server has stopped!\r\n", PREFIX);
             }
