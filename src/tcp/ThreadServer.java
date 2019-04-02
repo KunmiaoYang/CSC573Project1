@@ -51,7 +51,7 @@ public class ThreadServer extends Thread {
         ResultSet resultSet =
                 st.executeQuery("SELECT title FROM rfc " + whereClauseRFC + ";");
         if (resultSet.next())
-            st.executeUpdate(String.format("UPDATE rfc SET title = %s %s;", title, whereClauseRFC));
+            st.executeUpdate(String.format("UPDATE rfc SET title = '%s' %s;", title, whereClauseRFC));
         else
             st.executeUpdate("INSERT INTO rfc (number, title, ip, port) VALUES " +
                     "(" + number + ", '" + title + "', '" + ip + "', " + port + ");");
