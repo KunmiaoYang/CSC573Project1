@@ -7,12 +7,11 @@ import java.net.Socket;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static tcp.MainServer.*;
+import static tcp.Requests.KEY_COMMAND;
 
 public class ThreadServer extends Thread {
     static final String PREFIX = "Thread server";
@@ -28,13 +27,9 @@ public class ThreadServer extends Thread {
     private Socket socket;
     private Database db;
     private String ip;
-    private int port;
+    private int clientServicePort;
     private String whereClause;
     private String clientPrefix;
-
-    private static void consoleOutput (String prefix, String msg) {
-        System.out.format("<%s>: %s\r\n", prefix, msg);
-    }
 
     ThreadServer(Socket socket, Database db) {
         this.socket = socket;
@@ -42,17 +37,17 @@ public class ThreadServer extends Thread {
     }
 
     private void registerClient(Map<String, String> requestMap) throws SQLException {
-        this.port = Integer.parseInt(requestMap.get(MainServer.HEADER_PORT));
+        this.clientServicePort = Integer.parseInt(requestMap.get(MainServer.HEADER_PORT));
         this.ip = socket.getInetAddress().getHostAddress();
-//        this.port = socket.getPort();
+//        this.clientServicePort = socket.getPort();
         this.clientPrefix = String.format("%s %s:%d", Client.PREFIX, this.ip, socket.getPort());
-        this.whereClause = String.format("WHERE ip = '%s' AND port = %d", ip, port);
+        this.whereClause = String.format("WHERE ip = '%s' AND port = %d", ip, clientServicePort);
         Statement st = db.getStatement();
         ResultSet resultSet =
                 st.executeQuery("SELECT active FROM client " + whereClause + ";");
         if (!resultSet.next())
             st.executeUpdate("INSERT INTO client (ip, port, active) values " +
-                    "('" + ip + "', " + port + ", true);");
+                    "('" + ip + "', " + clientServicePort + ", true);");
         else
             st.executeUpdate(String.format("UPDATE client SET active = true %s;", whereClause));
         resultSet.close();
@@ -71,33 +66,24 @@ public class ThreadServer extends Thread {
         resultSet.close();
     }
 
-    private void executeAddRFC (PrintWriter pw, BufferedReader br, String command) throws IOException, SQLException {
+    private void executeAddRFC (PrintWriter pw, Map<String, String> requestMap) throws SQLException {
+        String command = requestMap.get(KEY_COMMAND);
         String[] args = command.split("\\s+");
         int number = Integer.parseInt(args[2]);
-        int port = this.port;
-        String title = null, ip = this.ip;
-        String info;
-        while (!(info = br.readLine()).equals(CODE_END)) {
-            consoleOutput(clientPrefix, info);
-            if (info.startsWith(HEADER_HOST))
-                ip = info.substring(HEADER_HOST.length()).trim();
-            else if (info.startsWith(HEADER_PORT))
-                port = Integer.parseInt(info.substring(HEADER_PORT.length()).trim());
-            else if (info.startsWith(HEADER_TITLE))
-                title = info.substring(HEADER_TITLE.length()).trim();
-        }
-        consoleOutput(clientPrefix, "");
+        int port = requestMap.containsKey(HEADER_PORT)?
+                Integer.parseInt(requestMap.get(HEADER_PORT)): this.clientServicePort;
+        String title = requestMap.get(HEADER_TITLE),
+                ip = requestMap.getOrDefault(HEADER_HOST, this.ip);
         if (port > -1 && null != title && null != ip) {
             addRFC(number, title, ip, port);
             pw.format("%s %d %s\r\n", VERSION, STATUS_OK, PHRASE_OK);
-            String msg = String.format("Add RFC %d %s from %s:%d complete!", number, title, ip, port);
-            pw.println(msg);
+            pw.format("Add RFC %d %s from %s:%d complete!\r\n", number, title, ip, port);
         }
         pw.println(MainServer.CODE_END);
         pw.flush();
     }
 
-    private void lookup (PrintWriter pw, BufferedReader br, String whereCondition) throws SQLException {
+    private void lookup (PrintWriter pw, String whereCondition) throws SQLException {
         StringBuilder sbSql = new StringBuilder("SELECT * FROM RFC");
         if (null != whereCondition && !whereCondition.equals(""))
             sbSql.append(" ").append(whereCondition.trim());
@@ -122,28 +108,18 @@ public class ThreadServer extends Thread {
         pw.flush();
     }
 
-    private void executeLookup (PrintWriter pw, BufferedReader br, String command) throws IOException, SQLException {
+    private void executeLookup (PrintWriter pw, Map<String, String> requestMap) throws SQLException {
+        String command = requestMap.get(KEY_COMMAND);
         String[] args = command.split("\\s+");
         int number = Integer.parseInt(args[2]);
-        int port = this.port;
-        String title = null, ip = this.ip;
-//        consoleOutput(clientPrefix, String.format("Looking up RFC %d ...", number));
-        String info;
-        while (!(info = br.readLine()).equals(CODE_END)) {
-            consoleOutput(clientPrefix, info);
-            if (info.startsWith(HEADER_TITLE))
-                title = info.substring(HEADER_TITLE.length()).trim();
-        }
-        consoleOutput(clientPrefix, "");
+        String title = requestMap.get(HEADER_TITLE);
         StringBuilder sbWhere = new StringBuilder("WHERE number = ").append(number);
         if (null != title) sbWhere.append(" AND title = '").append(title).append("'");
-        lookup(pw, br, sbWhere.toString());
+        lookup(pw, sbWhere.toString());
     }
 
-    private void executeList (PrintWriter pw, BufferedReader br, String command) throws IOException, SQLException {
-//        consoleOutput(clientPrefix, "List all RFCs");
-        printMessage(clientPrefix, br);
-        lookup(pw, br, "");
+    private void executeList(PrintWriter pw) throws SQLException {
+        lookup(pw, "");
     }
 
     private void removeClient() throws SQLException {
@@ -174,27 +150,28 @@ public class ThreadServer extends Thread {
         return serverVersion.length >= clientVersion.length;
     }
 
-    private void execute (PrintWriter pw, BufferedReader br, String command) throws IOException {
-        consoleOutput(clientPrefix, command);
+    private void execute (PrintWriter pw, List<String> request) throws IOException {
+        Requests.consoleOutputRequest(clientPrefix, request);
+        Map<String, String> requestMap = Requests.getRequestMap(request);
+        String command = requestMap.get(KEY_COMMAND);
         String[] args = command.trim().split("\\s+");
         String code = args[0];
         String version = args[args.length - 1];
         try {
-            if (!checkVersion(version)) {
-                printMessage(clientPrefix, br);
+            if (!checkVersion(version)) { // if version is not supported
                 pw.format("%s %d %s\r\n", VERSION, STATUS_INVALID_VERSION, PHRASE_INVALID_VERSION);
                 pw.println(command);
                 pw.println(MainServer.CODE_END);
                 pw.flush();
                 return;
             } else if (code.equals(MainServer.CODE_ADD)) {
-                executeAddRFC(pw, br, command.trim());
+                executeAddRFC(pw, requestMap);
                 return;
             } else if (code.equals(MainServer.CODE_LOOKUP)) {
-                executeLookup(pw, br, command.trim());
+                executeLookup(pw, requestMap);
                 return;
             } else if (code.equals(MainServer.CODE_LIST)) {
-                executeList(pw, br, command.trim());
+                executeList(pw);
                 return;
             }
         } catch (SQLException | VersionException e) {
@@ -202,34 +179,10 @@ public class ThreadServer extends Thread {
         }
         pw.format("%s %d %s\r\n", VERSION, STATUS_BAD_REQUEST, PHRASE_BAD_REQUEST);
         pw.println(command);
-        printMessage(clientPrefix, br);
         pw.println(MainServer.CODE_END);
         pw.flush();
     }
 
-    private List<String> readRequest(BufferedReader br) throws IOException {
-        List<String> list = new ArrayList<>();
-        String line;
-        do {
-            list.add(line = br.readLine());
-        } while (!line.equals(MainServer.CODE_END));
-        return list;
-    }
-
-    private Map<String, String> getRequestMap(List<String> request) {
-        Map<String, String> map = new HashMap<>();
-        int split;
-        for (String line: request) {
-            if (0 == (split = line.indexOf(':') + 1)) continue;
-            map.put(line.substring(0, split).trim(), line.substring(split).trim());
-        }
-        return map;
-    }
-
-    private void consoleOutputRequest(String prefix, List<String> request) {
-        for (String line: request)
-            consoleOutput(prefix, line);
-    }
 
     @Override
     public void run() {
@@ -249,19 +202,21 @@ public class ThreadServer extends Thread {
             pw.println(CODE_END);
             pw.flush();
 
-            List<String> request = readRequest(br);
-            registerClient(getRequestMap(request));
-            consoleOutputRequest(clientPrefix, request);
+            List<String> request = Requests.readRequest(br);
+            registerClient(Requests.getRequestMap(request));
+            Requests.consoleOutputRequest(clientPrefix, request);
 
-            String command;
-            while (!(command = br.readLine()).equals(CODE_EXIT)) {
+            for (request = Requests.readRequest(br);
+                 !request.get(request.size() - 1).equals(CODE_EXIT);
+                 request = Requests.readRequest(br)) {
                 try {
-                    execute(pw, br, command);
+                    execute(pw, request);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
-            consoleOutput(clientPrefix, "Disconnected!");
+
+            Requests.consoleOutput(clientPrefix, "Disconnected!");
         } catch (IOException | SQLException e) {
             e.printStackTrace();
         } finally {
@@ -279,7 +234,7 @@ public class ThreadServer extends Thread {
     }
 
     public static class VersionException extends Exception {
-        public VersionException(String message) {
+        VersionException(String message) {
             super(message);
         }
     }

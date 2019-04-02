@@ -16,7 +16,7 @@ public class MainServer {
     static final String CODE_ADD = "ADD";
     static final String CODE_LOOKUP = "LOOKUP";
     static final String CODE_LIST = "LIST";
-    static final String CODE_END = "end";
+    static final String CODE_END = "";
     static final String CODE_EXIT = "exit";
     static final String HEADER_HOST = "Host:";
     static final String HEADER_PORT = "Port:";

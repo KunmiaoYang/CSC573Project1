@@ -18,6 +18,7 @@ public class Client {
     private static final String VERSION = "P2P-CI/1.0";
     private static String serverName = null;
     private static String host;
+    private static int clientServicePort;
     private static int port;
     private static String os;
     private static Path localRoot = null;
@@ -32,7 +33,7 @@ public class Client {
     private static void addRFC (PrintWriter pw, BufferedReader br, RFC rfc) throws IOException {
         pw.format("%s RFC %d %s\r\n", CODE_ADD, rfc.id, VERSION);
         pw.format("%s %s\r\n", HEADER_HOST, host);
-        pw.format("%s %s\r\n", HEADER_PORT, port);
+        pw.format("%s %s\r\n", HEADER_PORT, clientServicePort);
         pw.format("%s %s\r\n", HEADER_TITLE, rfc.title);
         pw.println(CODE_END);
         pw.flush();
@@ -122,10 +123,11 @@ public class Client {
             // connect
             Socket socket = new Socket(serverName, PORT);
             host = socket.getLocalAddress().getHostAddress();
+            port = socket.getLocalPort();
 
             // start client service
             clientService = new ClientService(localStorage, host);
-            port = clientService.getPort();
+            clientServicePort = clientService.getPort();
             clientService.start();
 
             // init IO
@@ -138,7 +140,7 @@ public class Client {
             // send basic info
             pw.format("%s %s %s\r\n", CODE_CONNECT, "INIT", VERSION);
             pw.format("%s %s\r\n", HEADER_HOST, host);
-            pw.format("%s %s\r\n", HEADER_PORT, port);
+            pw.format("%s %s\r\n", HEADER_PORT, clientServicePort);
             pw.println(CODE_END);
             pw.flush();
             printMessage(ThreadServer.PREFIX, br);
