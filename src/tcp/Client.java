@@ -22,12 +22,6 @@ public class Client {
     private static String os;
     private static Path localRoot = null;
 
-    private static void initHost (BufferedReader br) throws IOException {
-        String[] info = br.readLine().split(":");
-        host = info[0];
-        port = Integer.parseInt(info[1]);
-    }
-
     private static void updateRFC (PrintWriter pw, BufferedReader br, LocalStorage localStorage)
             throws IOException {
         for (RFC rfc: localStorage.getAllRFC()) {
@@ -37,9 +31,9 @@ public class Client {
 
     private static void addRFC (PrintWriter pw, BufferedReader br, RFC rfc) throws IOException {
         pw.format("%s RFC %d %s\r\n", CODE_ADD, rfc.id, VERSION);
-        pw.format("%s: %s\r\n", "Host", host);
-        pw.format("%s: %s\r\n", "Port", port);
-        pw.format("%s: %s\r\n", "Title", rfc.title);
+        pw.format("%s %s\r\n", HEADER_HOST, host);
+        pw.format("%s %s\r\n", HEADER_PORT, port);
+        pw.format("%s %s\r\n", HEADER_TITLE, rfc.title);
         pw.println(CODE_END);
         pw.flush();
         printMessage(ThreadServer.PREFIX, br);
@@ -55,13 +49,12 @@ public class Client {
             return false;
         }
         pw.format("%s RFC %d %s\r\n", CODE_LOOKUP, number, VERSION);
-        pw.format("%s: %s\r\n", "Host", host);
-        pw.format("%s: %s\r\n", "Port", port);
+        pw.format("%s %s\r\n", HEADER_HOST, host);
+        pw.format("%s %s\r\n", HEADER_PORT, port);
         if (args.length > 2) {
             String title = command.substring(CODE_LOOKUP.length()).trim()
                     .substring(args[1].length()).trim();
-            pw.format("%s: %s\r\n",
-                    "Title", title);
+            pw.format("%s %s\r\n", HEADER_TITLE, title);
         }
         pw.println(CODE_END);
         pw.flush();
@@ -71,8 +64,8 @@ public class Client {
 
     private static void listAll (PrintWriter pw, BufferedReader br) throws IOException {
         pw.format("%s ALL %s\r\n", CODE_LIST, VERSION);
-        pw.format("%s: %s\r\n", "Host", host);
-        pw.format("%s: %s\r\n", "Port", port);
+        pw.format("%s %s\r\n", HEADER_HOST, host);
+        pw.format("%s %s\r\n", HEADER_PORT, port);
         pw.println(CODE_END);
         pw.flush();
         printMessage(ThreadServer.PREFIX, br);
@@ -94,6 +87,7 @@ public class Client {
     }
 
     public static void main (String[] args) throws Exception {
+        ClientService clientService = null;
         try {
             System.out.println("args: " + Arrays.toString(args));
             for (int i = 0; i < args.length; i++) {
@@ -127,6 +121,12 @@ public class Client {
 
             // connect
             Socket socket = new Socket(serverName, PORT);
+            host = socket.getLocalAddress().getHostAddress();
+
+            // start client service
+            clientService = new ClientService(localStorage, host);
+            port = clientService.getPort();
+            clientService.start();
 
             // init IO
             OutputStream os = socket.getOutputStream();
@@ -136,10 +136,11 @@ public class Client {
             Scanner scanner = new Scanner(System.in);
 
             // send basic info
-            pw.println("Connection established!");
+            pw.format("%s %s %s\r\n", CODE_CONNECT, "INIT", VERSION);
+            pw.format("%s %s\r\n", HEADER_HOST, host);
+            pw.format("%s %s\r\n", HEADER_PORT, port);
             pw.println(CODE_END);
             pw.flush();
-            initHost(br);
             printMessage(ThreadServer.PREFIX, br);
             updateRFC(pw, br, localStorage);
 
@@ -160,6 +161,8 @@ public class Client {
             os.close();
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (null != clientService) clientService.kill();
         }
     }
 }

@@ -7,6 +7,10 @@ import java.net.Socket;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static tcp.MainServer.*;
 
@@ -32,16 +36,16 @@ public class ThreadServer extends Thread {
         System.out.format("<%s>: %s\r\n", prefix, msg);
     }
 
-    ThreadServer(Socket socket, Database db) throws SQLException {
+    ThreadServer(Socket socket, Database db) {
         this.socket = socket;
         this.db = db;
-        registerClient();
     }
 
-    private void registerClient() throws SQLException {
+    private void registerClient(Map<String, String> requestMap) throws SQLException {
+        this.port = Integer.parseInt(requestMap.get(MainServer.HEADER_PORT));
         this.ip = socket.getInetAddress().getHostAddress();
-        this.port = socket.getPort();
-        this.clientPrefix = String.format("%s %s:%d", Client.PREFIX, this.ip, this.port);
+//        this.port = socket.getPort();
+        this.clientPrefix = String.format("%s %s:%d", Client.PREFIX, this.ip, socket.getPort());
         this.whereClause = String.format("WHERE ip = '%s' AND port = %d", ip, port);
         Statement st = db.getStatement();
         ResultSet resultSet =
@@ -203,6 +207,30 @@ public class ThreadServer extends Thread {
         pw.flush();
     }
 
+    private List<String> readRequest(BufferedReader br) throws IOException {
+        List<String> list = new ArrayList<>();
+        String line;
+        do {
+            list.add(line = br.readLine());
+        } while (!line.equals(MainServer.CODE_END));
+        return list;
+    }
+
+    private Map<String, String> getRequestMap(List<String> request) {
+        Map<String, String> map = new HashMap<>();
+        int split;
+        for (String line: request) {
+            if (0 == (split = line.indexOf(':') + 1)) continue;
+            map.put(line.substring(0, split).trim(), line.substring(split).trim());
+        }
+        return map;
+    }
+
+    private void consoleOutputRequest(String prefix, List<String> request) {
+        for (String line: request)
+            consoleOutput(prefix, line);
+    }
+
     @Override
     public void run() {
 //        super.run();
@@ -217,11 +245,13 @@ public class ThreadServer extends Thread {
             os = socket.getOutputStream();
             pw = new PrintWriter(os);
 
-            pw.println(this.ip + ":" + this.port);
             pw.println("Welcome!");
             pw.println(CODE_END);
             pw.flush();
-            printMessage(clientPrefix, br);
+
+            List<String> request = readRequest(br);
+            registerClient(getRequestMap(request));
+            consoleOutputRequest(clientPrefix, request);
 
             String command;
             while (!(command = br.readLine()).equals(CODE_EXIT)) {
@@ -232,7 +262,7 @@ public class ThreadServer extends Thread {
                 }
             }
             consoleOutput(clientPrefix, "Disconnected!");
-        } catch (IOException e) {
+        } catch (IOException | SQLException e) {
             e.printStackTrace();
         } finally {
             try {

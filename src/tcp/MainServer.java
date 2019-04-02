@@ -12,6 +12,7 @@ import java.sql.Statement;
 
 public class MainServer {
     static final int PORT = 7734;
+    static final String CODE_CONNECT = "CONNECT";
     static final String CODE_ADD = "ADD";
     static final String CODE_LOOKUP = "LOOKUP";
     static final String CODE_LIST = "LIST";
@@ -64,7 +65,7 @@ public class MainServer {
                     threadServer.start();
                     InetAddress address = socket.getInetAddress();
                     System.out.println("New connection: "+ address.getHostAddress() + ":" + socket.getPort());
-                } catch (SQLException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                     try {
                         if (null != socket) socket.close();
