@@ -14,7 +14,7 @@ public class LocalStorage {
 
     public LocalStorage(Path root) {
         this.root = root.toAbsolutePath();
-        try (DirectoryStream<Path> ds = Files.newDirectoryStream(root, "*.txt")) {
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(root, "*.{txt,pdf}")) {
             for (Path file: ds) {
                 try {
                     RFC rfc = new RFC(file);

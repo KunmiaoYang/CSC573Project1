@@ -22,8 +22,8 @@ import static tcp.Requests.KEY_COMMAND;
 public class Client {
     static final String PREFIX = "Client";
     static final String VERSION = "P2P-CI/1.0";
-    static final int BUF_SIZE = 1024;
-    static final int TRANS_DELAY = 50;
+    static final int BUF_SIZE = 10*1024;
+    static final int TRANS_DELAY = 10;
     private static String serverName = null;
     private static String host;
     private static int clientServicePort;
@@ -122,7 +122,7 @@ public class Client {
                     return false;
 
                 String title = responseMap.get(HEADER_TITLE),
-                        filename = String.format("%04d %s.txt", number, title);
+                        filename = responseMap.get(HEADER_FILENAME);
                 Path file = localStorage.createFile(filename);
                 try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file.toFile()))) {
                     byte[] buf = new byte[BUF_SIZE];

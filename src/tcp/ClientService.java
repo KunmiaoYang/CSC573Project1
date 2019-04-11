@@ -90,6 +90,7 @@ public class ClientService extends Thread {
                     pw.format("%s %s\r\n", HEADER_DATE, new Date().toString());
                     pw.format("%s %s\r\n", HEADER_OS, OS);
                     pw.format("%s %s\r\n", HEADER_TITLE, rfc.title);
+                    pw.format("%s %s\r\n", HEADER_FILENAME, rfc.path.getFileName());
                     pw.format("%s %s\r\n", HEADER_LAST_MODIFIED, new Date(file.lastModified()).toString());
                     pw.format("%s %s\r\n", HEADER_CONTENT_LENGTH, file.length());
                     pw.format("%s %s\r\n", HEADER_CONTENT_TYPE, RFC.CONTENT_TYPE);

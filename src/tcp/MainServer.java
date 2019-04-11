@@ -22,6 +22,7 @@ public class MainServer {
     static final String HEADER_HOST = "Host:";
     static final String HEADER_PORT = "Port:";
     static final String HEADER_TITLE = "Title:";
+    static final String HEADER_FILENAME = "Filename:";
     static final String HEADER_DATE = "Date:";
     static final String HEADER_OS = "OS:";
     static final String HEADER_LAST_MODIFIED = "Last-Modified:";
