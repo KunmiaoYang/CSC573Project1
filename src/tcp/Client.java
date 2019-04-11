@@ -23,6 +23,7 @@ public class Client {
     static final String PREFIX = "Client";
     static final String VERSION = "P2P-CI/1.0";
     static final int BUF_SIZE = 1024;
+    static final int TRANS_DELAY = 50;
     private static String serverName = null;
     private static String host;
     private static int clientServicePort;
@@ -125,18 +126,19 @@ public class Client {
                 Path file = localStorage.createFile(filename);
                 try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file.toFile()))) {
                     byte[] buf = new byte[BUF_SIZE];
-                    int nr = 0;
+                    int nr = 0, fileSize = Integer.parseInt(responseMap.get(HEADER_CONTENT_LENGTH));
                     for (int num = is.read(buf); num != -1; num = is.read(buf)) {
+                        TimeUnit.MILLISECONDS.sleep(TRANS_DELAY);
                         bos.write(buf, 0, num);
                         bos.flush();
                         nr += num;
+                        System.out.format("\rData received: %d bytes / %d bytes. ", nr, fileSize);
                     }
-                    System.out.println("Data received: " + nr);
-                    if (nr != Integer.parseInt(responseMap.get(HEADER_CONTENT_LENGTH))) {
+                    if (nr != fileSize) {
                         System.out.println("Incomplete! Retry: " + retry);
                         TimeUnit.SECONDS.sleep(1);
                         continue;   // Retry
-                    }
+                    } else System.out.println("Complete!");
                 } catch (IOException | InterruptedException e) {
                     e.printStackTrace();
                 }

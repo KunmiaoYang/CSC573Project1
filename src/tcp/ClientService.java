@@ -9,8 +9,10 @@ import java.net.Socket;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static tcp.Client.BUF_SIZE;
+import static tcp.Client.TRANS_DELAY;
 import static tcp.MainServer.*;
 import static tcp.Requests.KEY_COMMAND;
 
@@ -97,11 +99,14 @@ public class ClientService extends Thread {
                     byte[] buf = new byte[BUF_SIZE];
                     int nr = 0;
                     for (int num = fis.read(buf); num != -1; num = fis.read(buf)) {
+                        TimeUnit.MILLISECONDS.sleep(TRANS_DELAY);
                         os.write(buf, 0, num);
                         os.flush();
                         nr += num;
                     }
                     System.out.println("Data sent: " + nr);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
             } catch (NoRFCFoundException e) {
                 System.out.format("<%s>: %s\r\n", PREFIX, e.toString());
