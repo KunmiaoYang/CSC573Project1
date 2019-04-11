@@ -58,6 +58,9 @@ public class ClientService extends Thread {
                  BufferedReader br = new BufferedReader(new InputStreamReader(is));
                  OutputStream os = socket.getOutputStream();
                  PrintWriter pw = new PrintWriter(os)){
+                // Set socket buffer
+                socket.setSendBufferSize(32*1024);
+
                 // parse request
                 List<String> request = Requests.readRequest(br);
                 Requests.consoleOutputRequest(PREFIX, request);
@@ -92,10 +95,13 @@ public class ClientService extends Thread {
                     pw.flush();
 
                     byte[] buf = new byte[BUF_SIZE];
+                    int nr = 0;
                     for (int num = fis.read(buf); num != -1; num = fis.read(buf)) {
                         os.write(buf, 0, num);
                         os.flush();
+                        nr += num;
                     }
+                    System.out.println("Data sent: " + nr);
                 }
             } catch (NoRFCFoundException e) {
                 System.out.format("<%s>: %s\r\n", PREFIX, e.toString());

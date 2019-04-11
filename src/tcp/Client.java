@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 
 import static tcp.MainServer.*;
 import static tcp.Requests.KEY_COMMAND;
@@ -96,45 +97,59 @@ public class Client {
         }
         String host = args[2],
                 peerPrefix = String.format("Client service %s:%d", host, port);
-        try(Socket peerSocket = new Socket(host, port);
-            OutputStream os = peerSocket.getOutputStream();
-            PrintWriter peerPw = new PrintWriter(os);
-            InputStream is = peerSocket.getInputStream();
-            BufferedReader peerBr = new BufferedReader(new InputStreamReader(is))
-        ) {
-            peerPw.format("%s RFC %d %s\r\n", CODE_GET, number, VERSION);
-            peerPw.format("%s %s\r\n", HEADER_HOST, host);
-            peerPw.format("%s %s\r\n", HEADER_PORT, port);
-            peerPw.format("%s %s\r\n", HEADER_OS, OS);
-            peerPw.println(CODE_END);
-            peerPw.flush();
-            List<String> response = Requests.readRequest(peerBr);
-            Requests.consoleOutputRequest(peerPrefix, response);
-            Map<String, String> responseMap = Requests.getRequestMap(response);
+        for (int retry = 1; retry <= 10; retry++) {
+            try (Socket peerSocket = new Socket(host, port);
+                 OutputStream os = peerSocket.getOutputStream();
+                 PrintWriter peerPw = new PrintWriter(os);
+                 InputStream is = peerSocket.getInputStream();
+                 BufferedReader peerBr = new BufferedReader(new InputStreamReader(is))
+            ) {
+                // Set socket buffer
+                peerSocket.setReceiveBufferSize(32 * 1024);
 
-            if (STATUS_OK != Integer.parseInt(responseMap.get(KEY_COMMAND).split("\\s+")[1]))
-                return false;
+                peerPw.format("%s RFC %d %s\r\n", CODE_GET, number, VERSION);
+                peerPw.format("%s %s\r\n", HEADER_HOST, host);
+                peerPw.format("%s %s\r\n", HEADER_PORT, port);
+                peerPw.format("%s %s\r\n", HEADER_OS, OS);
+                peerPw.println(CODE_END);
+                peerPw.flush();
+                List<String> response = Requests.readRequest(peerBr);
+                Requests.consoleOutputRequest(peerPrefix, response);
+                Map<String, String> responseMap = Requests.getRequestMap(response);
 
-            String title = responseMap.get(HEADER_TITLE),
-                    filename = String.format("%04d %s.txt", number, title);
-            Path file = localStorage.createFile(filename);
-            try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file.toFile()))) {
-                byte[] buf = new byte[BUF_SIZE];
-                for (int num = is.read(buf); num != -1; num = is.read(buf)) {
-                    bos.write(buf, 0, num);
-                    bos.flush();
+                if (STATUS_OK != Integer.parseInt(responseMap.get(KEY_COMMAND).split("\\s+")[1]))
+                    return false;
+
+                String title = responseMap.get(HEADER_TITLE),
+                        filename = String.format("%04d %s.txt", number, title);
+                Path file = localStorage.createFile(filename);
+                try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file.toFile()))) {
+                    byte[] buf = new byte[BUF_SIZE];
+                    int nr = 0;
+                    for (int num = is.read(buf); num != -1; num = is.read(buf)) {
+                        bos.write(buf, 0, num);
+                        bos.flush();
+                        nr += num;
+                    }
+                    System.out.println("Data received: " + nr);
+                    if (nr != Integer.parseInt(responseMap.get(HEADER_CONTENT_LENGTH))) {
+                        System.out.println("Incomplete! Retry: " + retry);
+                        TimeUnit.SECONDS.sleep(1);
+                        continue;   // Retry
+                    }
+                } catch (IOException | InterruptedException e) {
+                    e.printStackTrace();
                 }
+
+                addRFC(pw, br, new RFC(file));
+            } catch (UnknownHostException | ConnectException e) {
+                System.err.println("Invalid peer address!");
+                return false;
             } catch (IOException e) {
                 e.printStackTrace();
+                return false;
             }
-
-            addRFC(pw, br, new RFC(file));
-        } catch (UnknownHostException | ConnectException e) {
-            System.err.println("Invalid peer address!");
-            return false;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
+            break;
         }
         return true;
     }

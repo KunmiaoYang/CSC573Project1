@@ -35,7 +35,7 @@ public class MainServer {
     static final String PHRASE_BAD_REQUEST = "Bad Request";
     static final String PHRASE_NOT_FOUND = "Not Found";
     static final String PHRASE_INVALID_VERSION = "P2P-CI Version Not Supported";
-    static final Database db =  new Database();
+    static Database db;
 
     static void printMessage(String prefix, BufferedReader br) throws IOException {
         String info;
@@ -46,6 +46,7 @@ public class MainServer {
     }
 
     private static boolean initDB() {
+        db = new Database();
         if (null == db.getConnection()) return false;
         try {
             Statement statement = db.getStatement();
